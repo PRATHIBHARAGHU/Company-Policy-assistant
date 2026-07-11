@@ -1,62 +1,14 @@
-"""
-Embedding Service
-
-Uses FastEmbed to generate embeddings.
-"""
-
 from fastembed import TextEmbedding
-
+import numpy as np
 
 class EmbeddingService:
+    def __init__(self):
+        # Local BAAI Small configuration engine execution initialization
+        self.model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-    embedding_model = TextEmbedding()
+    def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+        embeddings_generator = self.model.embed(texts)
+        return [emb.tolist() for emb in embeddings_generator]
 
-    @classmethod
-    def embed_text(
-
-        cls,
-
-        text: str,
-
-    ):
-
-        embedding = list(
-
-            cls.embedding_model.embed(
-
-                [text]
-
-            )
-
-        )
-
-        return embedding[0]
-
-    @classmethod
-    def embed_documents(
-
-        cls,
-
-        chunks,
-
-    ):
-
-        texts = [
-
-            chunk["text"]
-
-            for chunk in chunks
-
-        ]
-
-        vectors = list(
-
-            cls.embedding_model.embed(
-
-                texts
-
-            )
-
-        )
-
-        return vectors
+    def generate_single_embedding(self, text: str) -> list[float]:
+        return self.generate_embeddings([text])[0]

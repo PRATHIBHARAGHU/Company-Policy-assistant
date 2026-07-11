@@ -1,166 +1,28 @@
-"""
-Document Processing Service
-
-Responsible for:
-
-PDF Parsing
-
-DOCX Parsing
-
-TXT Parsing
-
-Chunking
-
-Metadata Extraction
-"""
-
-from pathlib import Path
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-import fitz
-
-from docx import Document as DocxDocument
-
+import pypdf
 
 class DocumentProcessingService:
-
-    splitter = RecursiveCharacterTextSplitter(
-
-        chunk_size=700,
-
-        chunk_overlap=150
-    )
-
     @staticmethod
-    def extract_text(file_path: str):
-
-        extension = Path(file_path).suffix.lower()
-
-        if extension == ".pdf":
-
-            return DocumentProcessingService.read_pdf(file_path)
-
-        if extension == ".docx":
-
-            return DocumentProcessingService.read_docx(file_path)
-
-        if extension == ".txt":
-
-            return DocumentProcessingService.read_txt(file_path)
-
-        raise ValueError("Unsupported file.")
-
-    @staticmethod
-    def read_pdf(file_path):
-
-        doc = fitz.open(file_path)
-
-        pages = []
-
-        for page_number, page in enumerate(doc):
-
-            pages.append(
-
-                {
-
-                    "page": page_number + 1,
-
-                    "text": page.get_text()
-
-                }
-
-            )
-
-        return pages
-
-    @staticmethod
-    def read_docx(file_path):
-
-        document = DocxDocument(file_path)
-
-        text = "\n".join(
-
-            paragraph.text
-
-            for paragraph in document.paragraphs
-
-        )
-
-        return [
-
-            {
-
-                "page": 1,
-
-                "text": text,
-
-            }
-
-        ]
-
-    @staticmethod
-    def read_txt(file_path):
-
-        with open(
-
-            file_path,
-
-            encoding="utf8",
-
-        ) as file:
-
-            text = file.read()
-
-        return [
-
-            {
-
-                "page": 1,
-
-                "text": text,
-
-            }
-
-        ]
-
-    @classmethod
-    def create_chunks(
-
-        cls,
-
-        pages,
-
-    ):
-
-        chunks = []
-
-        index = 0
-
-        for page in pages:
-
-            texts = cls.splitter.split_text(
-
-                page["text"]
-
-            )
-
-            for chunk in texts:
-
-                chunks.append(
-
-                    {
-
-                        "page": page["page"],
-
-                        "chunk_index": index,
-
-                        "text": chunk,
-
-                    }
-
-                )
-
-                index += 1
-
-        return chunks
+    def extract_text_chunks_from_pdf(file_obj, max_chars: int = 1000, overlap: int = 200) -> list[dict]:
+        pdf_reader = pypdf.PdfReader(file_obj)
+        processed_chunks = []
+        global_chunk_idx = 0
+        
+        for page_idx, page in enumerate(pdf_reader.pages):
+            page_num = page_idx + 1
+            text = page.extract_text() or ""
+            
+            # Simple clean sliding character window splitting technique
+            start = 0
+            while start < len(text):
+                end = start + max_chars
+                chunk_content = text[start:end].strip()
+                if chunk_content:
+                    processed_chunks.append({
+                        "chunk_index": global_chunk_idx,
+                        "page_number": page_num,
+                        "content": chunk_content
+                    })
+                    global_chunk_idx += 1
+                start += (max_chars - overlap)
+                
+        return processed_chunks
