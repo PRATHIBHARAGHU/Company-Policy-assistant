@@ -1,12 +1,3 @@
-"""
-Authentication Service
-
-Purpose:
-    Handles registration, login, and current user retrieval.
-
-Business logic belongs here, not in the router.
-"""
-
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
@@ -29,15 +20,8 @@ from app.core.security import (
 class AuthService:
 
     @staticmethod
-    def register(
-        db: Session,
-        user_data: UserRegister,
-    ):
-        """
-        Register a new user.
-        """
+    def register(db: Session, user_data: UserRegister):
 
-        # Check email
         existing_email = (
             db.query(User)
             .filter(User.email == user_data.email)
@@ -50,20 +34,6 @@ class AuthService:
                 detail="Email already exists."
             )
 
-        # Check username
-        existing_username = (
-            db.query(User)
-            .filter(User.username == user_data.username)
-            .first()
-        )
-
-        if existing_username:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Username already exists."
-            )
-
-        # Default role
         employee_role = (
             db.query(Role)
             .filter(Role.name == "employee")
@@ -73,16 +43,16 @@ class AuthService:
         if employee_role is None:
 
             employee_role = Role(
-                name="employee",
-                description="Default Employee Role"
-            )
+            name="employee",
+            clearance_level=0
+        )
 
             db.add(employee_role)
             db.commit()
             db.refresh(employee_role)
 
         user = User(
-            username=user_data.username,
+            full_name=user_data.full_name,
             email=user_data.email,
             hashed_password=hash_password(user_data.password),
             role_id=employee_role.id,
@@ -97,13 +67,7 @@ class AuthService:
         }
 
     @staticmethod
-    def login(
-        db: Session,
-        credentials: UserLogin,
-    ) -> LoginResponse:
-        """
-        Authenticate user.
-        """
+    def login(db: Session, credentials: UserLogin):
 
         user = (
             db.query(User)
@@ -112,7 +76,6 @@ class AuthService:
         )
 
         if user is None:
-
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password."
@@ -122,7 +85,6 @@ class AuthService:
             credentials.password,
             user.hashed_password,
         ):
-
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password."
@@ -138,22 +100,18 @@ class AuthService:
         return LoginResponse(
             access_token=token,
             token_type="bearer",
-            username=user.username,
+            full_name=user.full_name,
             role=user.role.name,
         )
 
     @staticmethod
     def get_current_user(user: User):
-        """
-        Return current logged-in user.
-        """
 
         return {
             "id": user.id,
-            "username": user.username,
+            "full_name": user.full_name,
             "email": user.email,
             "role": user.role.name,
             "is_active": user.is_active,
-            "is_verified": user.is_verified,
             "created_at": user.created_at,
         }

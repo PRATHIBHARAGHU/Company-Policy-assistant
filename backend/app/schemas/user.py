@@ -15,7 +15,7 @@ class UserBase(BaseModel):
     Common User Fields
     """
 
-    username: str
+    full_name: str
     email: EmailStr
 
 
@@ -32,7 +32,7 @@ class UserUpdate(BaseModel):
     Update User Profile
     """
 
-    username: str | None = None
+    full_name: str | None = None
     email: EmailStr | None = None
 
 
@@ -42,13 +42,8 @@ class UserResponse(UserBase):
     """
 
     id: int
-
     role: str
-
     is_active: bool
-
-    is_verified: bool
-
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
